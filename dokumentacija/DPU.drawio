@@ -1,0 +1,117 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36" version="29.1.1">
+  <diagram name="Page-1" id="QXrKsoYXUzyHbErivhOF">
+    <mxGraphModel dx="1426" dy="743" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="sJEjOGsZk1ZZDJAehsPq-5" parent="1" style="rounded=0;whiteSpace=wrap;html=1;align=center;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;blockquote style=&quot;margin: 0px 0px 600px 40px; border: none; padding: 0px;&quot;&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;Planify&lt;/span&gt;&lt;/blockquote&gt;" vertex="1">
+          <mxGeometry height="590" width="970" x="150" y="35" as="geometry" />
+        </mxCell>
+        <mxCell id="sJEjOGsZk1ZZDJAehsPq-28" edge="1" parent="1" source="sJEjOGsZk1ZZDJAehsPq-6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;" target="sJEjOGsZk1ZZDJAehsPq-22">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="65" y="60" />
+              <mxPoint x="215" y="60" />
+              <mxPoint x="215" y="100" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sJEjOGsZk1ZZDJAehsPq-29" edge="1" parent="1" source="sJEjOGsZk1ZZDJAehsPq-6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sJEjOGsZk1ZZDJAehsPq-23">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="100" y="90" />
+              <mxPoint x="100" y="210" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sJEjOGsZk1ZZDJAehsPq-30" edge="1" parent="1" source="sJEjOGsZk1ZZDJAehsPq-6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sJEjOGsZk1ZZDJAehsPq-17">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="65" y="380" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sJEjOGsZk1ZZDJAehsPq-32" edge="1" parent="1" source="sJEjOGsZk1ZZDJAehsPq-6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sJEjOGsZk1ZZDJAehsPq-18">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="65" y="20" />
+              <mxPoint x="570" y="20" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sJEjOGsZk1ZZDJAehsPq-33" edge="1" parent="1" source="sJEjOGsZk1ZZDJAehsPq-6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sJEjOGsZk1ZZDJAehsPq-19">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="65" y="500" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sJEjOGsZk1ZZDJAehsPq-35" edge="1" parent="1" source="sJEjOGsZk1ZZDJAehsPq-6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sJEjOGsZk1ZZDJAehsPq-20">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="65" y="290" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sJEjOGsZk1ZZDJAehsPq-36" edge="1" parent="1" source="sJEjOGsZk1ZZDJAehsPq-6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sJEjOGsZk1ZZDJAehsPq-21">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="65" y="440" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sJEjOGsZk1ZZDJAehsPq-6" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" value="Uporabnik&lt;div&gt;&lt;br&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="60" width="30" x="50" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="sJEjOGsZk1ZZDJAehsPq-37" edge="1" parent="1" source="sJEjOGsZk1ZZDJAehsPq-7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sJEjOGsZk1ZZDJAehsPq-24">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sJEjOGsZk1ZZDJAehsPq-7" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" value="Google Calendar API&lt;div&gt;&lt;br&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="60" width="30" x="1170" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="sJEjOGsZk1ZZDJAehsPq-38" edge="1" parent="1" source="sJEjOGsZk1ZZDJAehsPq-8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sJEjOGsZk1ZZDJAehsPq-25">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sJEjOGsZk1ZZDJAehsPq-8" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" value="OpenWeather API&lt;div&gt;&lt;br&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="60" width="30" x="1160" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="sJEjOGsZk1ZZDJAehsPq-39" edge="1" parent="1" source="sJEjOGsZk1ZZDJAehsPq-9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sJEjOGsZk1ZZDJAehsPq-26">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sJEjOGsZk1ZZDJAehsPq-9" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" value="Firebase" vertex="1">
+          <mxGeometry height="60" width="30" x="1160" y="525" as="geometry" />
+        </mxCell>
+        <mxCell id="sJEjOGsZk1ZZDJAehsPq-17" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="Zagon focus timerja" vertex="1">
+          <mxGeometry height="80" width="120" x="450" y="340" as="geometry" />
+        </mxCell>
+        <mxCell id="sJEjOGsZk1ZZDJAehsPq-18" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="Ogled koledarja" vertex="1">
+          <mxGeometry height="80" width="120" x="510" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="sJEjOGsZk1ZZDJAehsPq-19" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="Ogled statistike učenja" vertex="1">
+          <mxGeometry height="80" width="120" x="294" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="sJEjOGsZk1ZZDJAehsPq-20" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="Nastavitev obvestil" vertex="1">
+          <mxGeometry height="80" width="120" x="620" y="260" as="geometry" />
+        </mxCell>
+        <mxCell id="sJEjOGsZk1ZZDJAehsPq-21" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="Vklop sinhronizacije&amp;nbsp;&lt;div&gt;podatkov&lt;/div&gt;" vertex="1">
+          <mxGeometry height="80" width="120" x="650" y="410" as="geometry" />
+        </mxCell>
+        <mxCell id="sJEjOGsZk1ZZDJAehsPq-22" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="Upravljanje predmetov" vertex="1">
+          <mxGeometry height="80" width="120" x="350" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="sJEjOGsZk1ZZDJAehsPq-23" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="Upravljanje&lt;div&gt;rokov/nalog/izpitov&lt;/div&gt;" vertex="1">
+          <mxGeometry height="80" width="120" x="350" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="sJEjOGsZk1ZZDJAehsPq-24" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Sinhronizacija dogodkov" vertex="1">
+          <mxGeometry height="80" width="120" x="890" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="sJEjOGsZk1ZZDJAehsPq-25" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Pridobivanje vremenske napovedi" vertex="1">
+          <mxGeometry height="80" width="120" x="880" y="250" as="geometry" />
+        </mxCell>
+        <mxCell id="sJEjOGsZk1ZZDJAehsPq-26" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="SInh. podatkov v oblak" vertex="1">
+          <mxGeometry height="80" width="120" x="900" y="490" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
