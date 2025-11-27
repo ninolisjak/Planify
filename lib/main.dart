@@ -1,12 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
+import 'services/db_service.dart'; 
 import 'screens/dashboard_screen.dart';
 import 'screens/focus_timer_screen.dart';
 import 'screens/settings_screen.dart';
 import 'providers/focus_provider.dart';
 
-void main() {
+
+Future<void> testDB() async {
+  final db = await DBService().database;
+
+  
+  final tables = await db.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type='table'");
+  print("Tabele v bazi:");
+  for (var table in tables) {
+    print(table['name']);
+  }
+
+  final subjects = await db.query('subjects');
+  print("Subjects count: ${subjects.length}");
+}
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+ 
+  final db = DBService();
+  //await db.database; 
+ // testDB();
+
   runApp(
     ChangeNotifierProvider(
       create: (_) => FocusProvider(),
