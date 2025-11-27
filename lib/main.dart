@@ -1,59 +1,56 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import 'screens/dashboard_screen.dart';
+import 'screens/focus_timer_screen.dart';
+import 'screens/settings_screen.dart';
+import 'providers/focus_provider.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => FocusProvider(),
+      child: const PlanifyApp(),
+    ),
+  );
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class PlanifyApp extends StatefulWidget {
+  const PlanifyApp({super.key});
+
+  @override
+  State<PlanifyApp> createState() => _PlanifyAppState();
+}
+
+class _PlanifyAppState extends State<PlanifyApp> {
+  int _index = 0;
+
+  final screens = const [
+    DashboardScreen(),
+    FocusTimerScreen(),
+    SettingsScreen(),
+  ];
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Planify Demo',
+      title: 'Planify MVP',
       theme: ThemeData(
         useMaterial3: true,
-        colorSchemeSeed: Colors.blue,
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
       ),
-      home: const MyHomePage(title: 'Planify demo'),
-    );
-  }
-}
-
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  void _incrementCounter() {
-    setState(() {
-      _counter++;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
-      ),
-      body: Center(
-        child: Text(
-          'Pritisnil si: $_counter krat',
-          style: const TextStyle(fontSize: 28),
-          textAlign: TextAlign.center,
+      home: Scaffold(
+        body: screens[_index],
+        bottomNavigationBar: BottomNavigationBar(
+          type: BottomNavigationBarType.fixed,
+          currentIndex: _index,
+          onTap: (i) => setState(() => _index = i),
+          items: const [
+            BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: "Domov"),
+            BottomNavigationBarItem(icon: Icon(Icons.timer), label: "Focus"),
+            BottomNavigationBarItem(icon: Icon(Icons.settings), label: "Nastavitve"),
+          ],
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        child: const Icon(Icons.add),
       ),
     );
   }
