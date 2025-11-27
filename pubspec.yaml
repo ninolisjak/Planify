@@ -17,6 +17,7 @@ dependencies:
   cloud_firestore: ^4.15.0
   google_sign_in: ^6.1.5
   firebase_messaging: ^14.9.0
-
+  shared_preferences: ^2.1.1
+ 
 flutter:
   uses-material-design: true

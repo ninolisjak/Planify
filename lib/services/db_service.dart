@@ -239,4 +239,8 @@ class DBService {
     final db = await database;
     return await db.update('sync_status', row, where: 'id = ?', whereArgs: [id]);
   }
+  Future<int> insert(String table, Map<String, dynamic> row) async {
+  final db = await database;
+  return await db.insert(table, row);
+}
 }
