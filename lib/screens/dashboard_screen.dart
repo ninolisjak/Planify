@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../widgets/subject_list.dart';
-
+import 'flashcards_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -67,7 +67,29 @@ class DashboardScreen extends StatelessWidget {
               ),
               const SizedBox(height: 24),
 
-           
+              // Gumb za flashcards
+              Card(
+                color: Colors.indigo.shade50,
+                child: ListTile(
+                  leading: const Icon(Icons.school),
+                  title: const Text("Učenje - Flashcards"),
+                  subtitle: const Text("Klikni za odpiranje flashcards"),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => FlashcardsScreen(
+                          flashcards: [
+                            {'title': 'Kaj je Flutter?'},
+                            {'title': 'Kaj je Dart?'},
+                            {'title': 'Kaj je State in Stateless widget?'},
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
 
               const SizedBox(height: 24),
 
