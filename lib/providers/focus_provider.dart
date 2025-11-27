@@ -1,21 +1,78 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 
 class FocusProvider extends ChangeNotifier {
-  DateTime? _startTime;
-  bool get isRunning => _startTime != null;
+  // dolžine faz
+  static const int workMinutes = 25;
+  static const int breakMinutes = 5;
 
-  DateTime? get startTime => _startTime;
+  // TAKOJ inicializiramo
+  int _remainingSeconds = workMinutes * 60;
+  bool _isRunning = false;
+  bool _isBreak = false; // false = fokus, true = odmor
+  Timer? _timer;
 
-  void start() {
-    _startTime = DateTime.now();
+  bool get isRunning => _isRunning;
+  bool get isBreak => _isBreak;
+  int get remainingSeconds => _remainingSeconds;
+
+  String get formattedTime {
+    final m = _remainingSeconds ~/ 60;
+    final s = _remainingSeconds % 60;
+    return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+  }
+
+  void _startTimer() {
+    _timer?.cancel();
+    _isRunning = true;
+
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_remainingSeconds > 0) {
+        _remainingSeconds--;
+        notifyListeners();
+      } else {
+        // faza končana
+        _timer?.cancel();
+        _isRunning = false;
+
+        if (!_isBreak) {
+          // končan fokus -> odmor
+          _isBreak = true;
+          _remainingSeconds = breakMinutes * 60;
+        } else {
+          // končan odmor -> spet fokus
+          _isBreak = false;
+          _remainingSeconds = workMinutes * 60;
+        }
+        notifyListeners();
+      }
+    });
+
     notifyListeners();
   }
 
-  Duration? stop() {
-    if (_startTime == null) return null;
-    final duration = DateTime.now().difference(_startTime!);
-    _startTime = null;
+  void start() {
+    if (_isRunning) return;
+    _startTimer();
+  }
+
+  void pause() {
+    _timer?.cancel();
+    _isRunning = false;
     notifyListeners();
-    return duration;
+  }
+
+  void reset() {
+    _timer?.cancel();
+    _isRunning = false;
+    _isBreak = false;
+    _remainingSeconds = workMinutes * 60;
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
   }
 }
