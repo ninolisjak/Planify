@@ -5,6 +5,7 @@ import '../models/task.dart';
 import '../services/weather_service.dart';
 import 'flashcard_decks_screen.dart';
 import 'settings_screen.dart';
+import 'notifications_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -136,7 +137,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               color: Colors.white,
                             ),
                             onPressed: () {
-                              // TODO: obvestila
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const NotificationsScreen(),
+                                ),
+                              );
                             },
                           ),
                           const SizedBox(width: 12),

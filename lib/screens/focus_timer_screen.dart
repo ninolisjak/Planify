@@ -9,6 +9,8 @@ class FocusTimerScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final timer = context.watch<FocusProvider>();
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     // Če je fullscreen aktiven, prikaži fullscreen view
     if (timer.isFullscreen) {
@@ -16,7 +18,7 @@ class FocusTimerScreen extends StatelessWidget {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF5F5F5),
       body: SafeArea(
         child: Column(
           children: [
@@ -82,6 +84,7 @@ class FocusTimerScreen extends StatelessWidget {
                   children: [
                    
                     _SectionCard(
+                      isDark: isDark,
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
                             vertical: 24, horizontal: 16),
@@ -89,9 +92,10 @@ class FocusTimerScreen extends StatelessWidget {
                           children: [
                             Text(
                               timer.formattedTime,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 64,
                                 fontWeight: FontWeight.bold,
+                                color: isDark ? Colors.white : Colors.black,
                               ),
                             ),
                             const SizedBox(height: 8),
@@ -99,9 +103,9 @@ class FocusTimerScreen extends StatelessWidget {
                               timer.isBreak
                                   ? "Trenutno si na odmoru."
                                   : "Trenutno si v fokus seji.",
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 14,
-                                color: Colors.black54,
+                                color: isDark ? Colors.white54 : Colors.black54,
                               ),
                             ),
                           ],
@@ -112,6 +116,7 @@ class FocusTimerScreen extends StatelessWidget {
 
                  
                     _SectionCard(
+                      isDark: isDark,
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
                             vertical: 16, horizontal: 16),
@@ -147,9 +152,9 @@ class FocusTimerScreen extends StatelessWidget {
                               timer.isBreak
                                   ? "Ko se odmor izteče, se pripravi nova fokus seja."
                                   : "Po koncu fokusa sledi kratki odmor.",
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 12,
-                                color: Colors.black54,
+                                color: isDark ? Colors.white54 : Colors.black54,
                               ),
                               textAlign: TextAlign.center,
                             ),
@@ -161,14 +166,18 @@ class FocusTimerScreen extends StatelessWidget {
                     const SizedBox(height: 16),
 
                 
-                    const _SectionCard(
+                    _SectionCard(
+                      isDark: isDark,
                       child: Padding(
                         padding:
-                            EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                            const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
                         child: Text(
                           "Pomodoro tehnika: 25 minut fokusa + 5 minut odmora. "
                           "Ponovi več ciklov, nato si vzemi daljši odmor.",
-                          style: TextStyle(fontSize: 13, color: Colors.black87),
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: isDark ? Colors.white70 : Colors.black87,
+                          ),
                         ),
                       ),
                     ),
@@ -186,21 +195,22 @@ class FocusTimerScreen extends StatelessWidget {
 
 class _SectionCard extends StatelessWidget {
   final Widget child;
+  final bool isDark;
 
-  const _SectionCard({required this.child});
+  const _SectionCard({required this.child, this.isDark = false});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: const [
+        boxShadow: [
           BoxShadow(
-            color: Colors.black12,
+            color: isDark ? Colors.black26 : Colors.black12,
             blurRadius: 6,
-            offset: Offset(0, 2),
+            offset: const Offset(0, 2),
           )
         ],
       ),
