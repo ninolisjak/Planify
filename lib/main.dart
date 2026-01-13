@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'providers/focus_provider.dart';
+import 'providers/theme_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/focus_timer_screen.dart';
@@ -16,9 +17,12 @@ await DBService().database; // ustvari bazo, če še ne obstaja
 await testDB();             // pokliče funkcijo za debug
 
 runApp(
-ChangeNotifierProvider(
-create: (_) => FocusProvider(),
-child: const PlanifyApp(),
+MultiProvider(
+  providers: [
+    ChangeNotifierProvider(create: (_) => FocusProvider()),
+    ChangeNotifierProvider(create: (_) => ThemeProvider()),
+  ],
+  child: const PlanifyApp(),
 ),
 );
 }
@@ -48,31 +52,73 @@ final userId = prefs.getString('user_id');
 return userId != null;
 }
 
+// Light tema
+static final ThemeData lightTheme = ThemeData(
+useMaterial3: true,
+brightness: Brightness.light,
+colorScheme: ColorScheme.fromSeed(
+  seedColor: Colors.deepPurple,
+  brightness: Brightness.light,
+),
+scaffoldBackgroundColor: const Color(0xFFF5F5F5),
+appBarTheme: const AppBarTheme(
+  backgroundColor: Colors.deepPurple,
+  foregroundColor: Colors.white,
+),
+bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+  backgroundColor: Colors.white,
+  selectedItemColor: Colors.deepPurple,
+  unselectedItemColor: Colors.grey,
+),
+);
+
+// Dark tema
+static final ThemeData darkTheme = ThemeData(
+useMaterial3: true,
+brightness: Brightness.dark,
+colorScheme: ColorScheme.fromSeed(
+  seedColor: Colors.deepPurple,
+  brightness: Brightness.dark,
+),
+scaffoldBackgroundColor: const Color(0xFF121212),
+appBarTheme: const AppBarTheme(
+  backgroundColor: Color(0xFF1E1E1E),
+  foregroundColor: Colors.white,
+),
+bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+  backgroundColor: Color(0xFF1E1E1E),
+  selectedItemColor: Colors.deepPurpleAccent,
+  unselectedItemColor: Colors.grey,
+),
+cardColor: const Color(0xFF1E1E1E),
+);
+
 @override
 Widget build(BuildContext context) {
+final themeProvider = context.watch<ThemeProvider>();
+
 return MaterialApp(
-title: 'Planify MVP',
-theme: ThemeData(
-useMaterial3: true,
-colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
-),
-initialRoute: '/login',
-routes: {
-'/login': (context) => const LoginScreen(),
-'/home': (context) => const PlanifyHomeScreen(),
-},
-home: FutureBuilder<bool>(
-future: _checkLogin(),
-builder: (context, snapshot) {
-if (!snapshot.hasData) {
-return const Scaffold(
-body: Center(child: CircularProgressIndicator()),
-);
-}
-final isLoggedIn = snapshot.data!;
-return isLoggedIn ? const PlanifyHomeScreen() : const LoginScreen();
-},
-),
+  title: 'Planify MVP',
+  theme: lightTheme,
+  darkTheme: darkTheme,
+  themeMode: themeProvider.themeMode,
+  initialRoute: '/login',
+  routes: {
+    '/login': (context) => const LoginScreen(),
+    '/home': (context) => const PlanifyHomeScreen(),
+  },
+  home: FutureBuilder<bool>(
+    future: _checkLogin(),
+    builder: (context, snapshot) {
+      if (!snapshot.hasData) {
+        return const Scaffold(
+          body: Center(child: CircularProgressIndicator()),
+        );
+      }
+      final isLoggedIn = snapshot.data!;
+      return isLoggedIn ? const PlanifyHomeScreen() : const LoginScreen();
+    },
+  ),
 );
 }
 }

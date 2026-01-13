@@ -10,10 +10,12 @@ class FocusProvider extends ChangeNotifier {
   int _remainingSeconds = workMinutes * 60;
   bool _isRunning = false;
   bool _isBreak = false; // false = fokus, true = odmor
+  bool _isFullscreen = false; // za fullscreen način
   Timer? _timer;
 
   bool get isRunning => _isRunning;
   bool get isBreak => _isBreak;
+  bool get isFullscreen => _isFullscreen;
   int get remainingSeconds => _remainingSeconds;
 
   String get formattedTime {
@@ -25,6 +27,7 @@ class FocusProvider extends ChangeNotifier {
   void _startTimer() {
     _timer?.cancel();
     _isRunning = true;
+    _isFullscreen = true; // Vstopi v fullscreen ko začneš
 
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_remainingSeconds > 0) {
@@ -34,6 +37,7 @@ class FocusProvider extends ChangeNotifier {
         // faza končana
         _timer?.cancel();
         _isRunning = false;
+        _isFullscreen = false; // Izhod iz fullscreen
 
         if (!_isBreak) {
           // končan fokus -> odmor
@@ -59,13 +63,27 @@ class FocusProvider extends ChangeNotifier {
   void pause() {
     _timer?.cancel();
     _isRunning = false;
+    // NE izhodi iz fullscreen pri pavzi
     notifyListeners();
+  }
+
+  void exitFullscreen() {
+    _isFullscreen = false;
+    notifyListeners();
+  }
+
+  void enterFullscreen() {
+    if (_isRunning) {
+      _isFullscreen = true;
+      notifyListeners();
+    }
   }
 
   void reset() {
     _timer?.cancel();
     _isRunning = false;
     _isBreak = false;
+    _isFullscreen = false;
     _remainingSeconds = workMinutes * 60;
     notifyListeners();
   }
