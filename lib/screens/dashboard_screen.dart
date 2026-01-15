@@ -3,10 +3,12 @@ import '../widgets/subject_list.dart';
 import '../models/weather.dart';
 import '../models/task.dart';
 import '../services/weather_service.dart';
+import '../services/db_service.dart';
 import 'flashcard_decks_screen.dart';
 import 'settings_screen.dart';
 import 'notifications_screen.dart';
 import 'subjects_screen.dart';
+import 'deadlines_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -17,6 +19,7 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   final WeatherService _weatherService = WeatherService();
+  final DBService _dbService = DBService();
   
   Weather? _weather;
   bool _isLoadingWeather = true;
@@ -24,12 +27,44 @@ class _DashboardScreenState extends State<DashboardScreen> {
   
   // Mock podatki za danes (lahko zamenjaš z DB)
   List<Task> _todayTasks = [];
+  
+  // Izpitni roki
+  int? _daysToNextExam;
+  String? _nextExamSubject;
 
   @override
   void initState() {
     super.initState();
     _loadWeather();
     _loadTodayTasks();
+    _loadNextExam();
+  }
+
+  Future<void> _loadNextExam() async {
+    try {
+      await _dbService.createExamDeadlinesTable();
+      final deadlines = await _dbService.getUpcomingExamDeadlines();
+      if (!mounted) return;
+      
+      if (deadlines.isNotEmpty) {
+        final nextExam = deadlines.first;
+        final examDate = DateTime.parse(nextExam['exam_date'] as String);
+        final now = DateTime.now();
+        final difference = examDate.difference(now).inDays;
+        
+        setState(() {
+          _daysToNextExam = difference < 0 ? 0 : difference;
+          _nextExamSubject = nextExam['subject_name'] as String?;
+        });
+      } else {
+        setState(() {
+          _daysToNextExam = null;
+          _nextExamSubject = null;
+        });
+      }
+    } catch (e) {
+      // Ignoriramo napake, pustimo placeholder
+    }
   }
 
   Future<void> _loadWeather() async {
@@ -77,9 +112,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         );
         break;
       case 'Roki':
-        // TODO: implementiraj DeadlinesScreen
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Roki - kmalu na voljo')),
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const DeadlinesScreen()),
         );
         break;
       case 'Naloge':
@@ -205,27 +240,43 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
-                            children: const [
+                            children: [
                               Text(
-                                "Do naslednjega izpita",
-                                style: TextStyle(
+                                _nextExamSubject != null
+                                    ? "Do izpita: $_nextExamSubject"
+                                    : "Do naslednjega izpita",
+                                style: const TextStyle(
                                   color: Colors.white70,
                                   fontSize: 14,
                                 ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              SizedBox(height: 8),
+                              const SizedBox(height: 8),
                               Text(
-                                "90 dni",
-                                style: TextStyle(
+                                _daysToNextExam != null
+                                    ? _daysToNextExam == 0
+                                        ? "DANES!"
+                                        : _daysToNextExam == 1
+                                            ? "1 dan"
+                                            : "$_daysToNextExam dni"
+                                    : "Ni rokov",
+                                style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 32,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              SizedBox(height: 8),
+                              const SizedBox(height: 8),
                               Text(
-                                "Ostani na poti do cilja!",
-                                style: TextStyle(
+                                _daysToNextExam != null
+                                    ? _daysToNextExam! <= 3
+                                        ? "Čas je za intenzivno učenje!"
+                                        : _daysToNextExam! <= 7
+                                            ? "Pripravi se na izpit!"
+                                            : "Ostani na poti do cilja!"
+                                    : "Dodaj izpitne roke",
+                                style: const TextStyle(
                                   color: Colors.white70,
                                   fontSize: 12,
                                 ),

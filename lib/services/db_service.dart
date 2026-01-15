@@ -243,4 +243,64 @@ class DBService {
   final db = await database;
   return await db.insert(table, row);
 }
+
+  // === EXAM DEADLINES ===
+
+  Future<void> createExamDeadlinesTable() async {
+    final db = await database;
+    
+    // Preveri če tabela že obstaja
+    final tables = await db.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='exam_deadlines'"
+    );
+    
+    if (tables.isEmpty) {
+      await db.execute('''
+        CREATE TABLE exam_deadlines(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id TEXT,
+          subject_id INTEGER,
+          subject_name TEXT NOT NULL,
+          exam_date TEXT NOT NULL,
+          exam_time TEXT,
+          duration_minutes INTEGER,
+          location TEXT,
+          notes TEXT,
+          created_at TEXT DEFAULT (datetime('now')),
+          FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE SET NULL
+        )
+      ''');
+    }
+  }
+
+  Future<int> insertExamDeadline(Map<String, dynamic> row) async {
+    final db = await database;
+    return await db.insert('exam_deadlines', row);
+  }
+
+  Future<List<Map<String, dynamic>>> getAllExamDeadlines() async {
+    final db = await database;
+    return await db.query('exam_deadlines', orderBy: 'exam_date ASC');
+  }
+
+  Future<List<Map<String, dynamic>>> getUpcomingExamDeadlines() async {
+    final db = await database;
+    final now = DateTime.now().toIso8601String();
+    return await db.query(
+      'exam_deadlines',
+      where: 'exam_date >= ?',
+      whereArgs: [now],
+      orderBy: 'exam_date ASC',
+    );
+  }
+
+  Future<int> updateExamDeadline(int id, Map<String, dynamic> row) async {
+    final db = await database;
+    return await db.update('exam_deadlines', row, where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<int> deleteExamDeadline(int id) async {
+    final db = await database;
+    return await db.delete('exam_deadlines', where: 'id = ?', whereArgs: [id]);
+  }
 }
