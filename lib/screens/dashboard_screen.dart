@@ -78,10 +78,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
 
     try {
-      // Uporabi mock podatke za testiranje (zamenjaj z getWeatherByCity ko imaš API ključ)
-      final weather = await _weatherService.getMockWeather();
-      // Za pravo uporabo:
-      // final weather = await _weatherService.getWeatherByCity('Ljubljana');
+      // Pridobi pravo vreme iz OpenWeather API
+      final weather = await _weatherService.getWeatherByCity('Maribor');
       if (!mounted) return;
       setState(() {
         _weather = weather;

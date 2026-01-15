@@ -3,12 +3,17 @@ import 'package:http/http.dart' as http;
 import '../models/weather.dart';
 
 class WeatherService {
-  // OPOMBA: Zamenjaj s svojim API ključem iz https://openweathermap.org/api
-  static const String _apiKey = 'YOUR_API_KEY_HERE';
+  static const String _apiKey = 'f9d2ea0117cfb6e9af01494b623b1d1f';
   static const String _baseUrl = 'https://api.openweathermap.org/data/2.5/weather';
 
-  Future<Weather> getWeatherByCity(String city) async {
-    final url = Uri.parse('$_baseUrl?q=$city&appid=$_apiKey&units=metric&lang=sl');
+  // Privzete koordinate za Ljubljano
+  static const double _defaultLat = 46.0569;
+  static const double _defaultLon = 14.5058;
+
+  Future<Weather> getWeatherByCoordinates({double? lat, double? lon}) async {
+    final latitude = lat ?? _defaultLat;
+    final longitude = lon ?? _defaultLon;
+    final url = Uri.parse('$_baseUrl?lat=$latitude&lon=$longitude&appid=$_apiKey&units=metric&lang=sl');
     
     try {
       final response = await http.get(url);
@@ -19,7 +24,7 @@ class WeatherService {
       } else if (response.statusCode == 401) {
         throw WeatherException('Neveljaven API ključ. Preveri OpenWeather API key.');
       } else if (response.statusCode == 404) {
-        throw WeatherException('Mesto ni najdeno.');
+        throw WeatherException('Lokacija ni najdena.');
       } else {
         throw WeatherException('Napaka pri pridobivanju vremena: ${response.statusCode}');
       }
@@ -27,6 +32,18 @@ class WeatherService {
       if (e is WeatherException) rethrow;
       throw WeatherException('Napaka omrežja. Preveri internetno povezavo.');
     }
+  }
+
+  // Ohrani staro metodo za združljivost
+  Future<Weather> getWeatherByCity(String city) async {
+    // Uporabi koordinate za znana mesta
+    if (city.toLowerCase() == 'ljubljana') {
+      return getWeatherByCoordinates(lat: 46.0569, lon: 14.5058);
+    } else if (city.toLowerCase() == 'maribor') {
+      return getWeatherByCoordinates(lat: 46.5547, lon: 15.6459);
+    }
+    // Za druga mesta uporabi privzete koordinate
+    return getWeatherByCoordinates();
   }
 
   // Mock podatki za testiranje brez API ključa

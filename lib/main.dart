@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'firebase_options.dart';
 import 'providers/focus_provider.dart';
 import 'providers/theme_provider.dart';
 import 'screens/login_screen.dart';
@@ -8,23 +11,25 @@ import 'screens/focus_timer_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/flashcards_screen.dart';
 import 'services/db_service.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
-WidgetsFlutterBinding.ensureInitialized();
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+  
+  await DBService().database;
 
-await DBService().database; // ustvari bazo, če še ne obstaja
-await testDB();             // pokliče funkcijo za debug
-
-runApp(
-MultiProvider(
-  providers: [
-    ChangeNotifierProvider(create: (_) => FocusProvider()),
-    ChangeNotifierProvider(create: (_) => ThemeProvider()),
-  ],
-  child: const PlanifyApp(),
-),
-);
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => FocusProvider()),
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+      ],
+      child: const PlanifyApp(),
+    ),
+  );
 }
 
 Future<void> testDB() async {
@@ -44,83 +49,74 @@ print(user); // prikaže vse stolpce, npr. id in email
 }
 
 class PlanifyApp extends StatelessWidget {
-const PlanifyApp({super.key});
+  const PlanifyApp({super.key});
 
-Future<bool> _checkLogin() async {
-final prefs = await SharedPreferences.getInstance();
-final userId = prefs.getString('user_id');
-return userId != null;
-}
+  // Light tema
+  static final ThemeData lightTheme = ThemeData(
+    useMaterial3: true,
+    brightness: Brightness.light,
+    colorScheme: ColorScheme.fromSeed(
+      seedColor: Colors.deepPurple,
+      brightness: Brightness.light,
+    ),
+    scaffoldBackgroundColor: const Color(0xFFF5F5F5),
+    appBarTheme: const AppBarTheme(
+      backgroundColor: Colors.deepPurple,
+      foregroundColor: Colors.white,
+    ),
+    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+      backgroundColor: Colors.white,
+      selectedItemColor: Colors.deepPurple,
+      unselectedItemColor: Colors.grey,
+    ),
+  );
 
-// Light tema
-static final ThemeData lightTheme = ThemeData(
-useMaterial3: true,
-brightness: Brightness.light,
-colorScheme: ColorScheme.fromSeed(
-  seedColor: Colors.deepPurple,
-  brightness: Brightness.light,
-),
-scaffoldBackgroundColor: const Color(0xFFF5F5F5),
-appBarTheme: const AppBarTheme(
-  backgroundColor: Colors.deepPurple,
-  foregroundColor: Colors.white,
-),
-bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-  backgroundColor: Colors.white,
-  selectedItemColor: Colors.deepPurple,
-  unselectedItemColor: Colors.grey,
-),
-);
+  // Dark tema
+  static final ThemeData darkTheme = ThemeData(
+    useMaterial3: true,
+    brightness: Brightness.dark,
+    colorScheme: ColorScheme.fromSeed(
+      seedColor: Colors.deepPurple,
+      brightness: Brightness.dark,
+    ),
+    scaffoldBackgroundColor: const Color(0xFF121212),
+    appBarTheme: const AppBarTheme(
+      backgroundColor: Color(0xFF1E1E1E),
+      foregroundColor: Colors.white,
+    ),
+    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+      backgroundColor: Color(0xFF1E1E1E),
+      selectedItemColor: Colors.deepPurpleAccent,
+      unselectedItemColor: Colors.grey,
+    ),
+    cardColor: const Color(0xFF1E1E1E),
+  );
 
-// Dark tema
-static final ThemeData darkTheme = ThemeData(
-useMaterial3: true,
-brightness: Brightness.dark,
-colorScheme: ColorScheme.fromSeed(
-  seedColor: Colors.deepPurple,
-  brightness: Brightness.dark,
-),
-scaffoldBackgroundColor: const Color(0xFF121212),
-appBarTheme: const AppBarTheme(
-  backgroundColor: Color(0xFF1E1E1E),
-  foregroundColor: Colors.white,
-),
-bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-  backgroundColor: Color(0xFF1E1E1E),
-  selectedItemColor: Colors.deepPurpleAccent,
-  unselectedItemColor: Colors.grey,
-),
-cardColor: const Color(0xFF1E1E1E),
-);
+  @override
+  Widget build(BuildContext context) {
+    final themeProvider = context.watch<ThemeProvider>();
 
-@override
-Widget build(BuildContext context) {
-final themeProvider = context.watch<ThemeProvider>();
-
-return MaterialApp(
-  title: 'Planify MVP',
-  theme: lightTheme,
-  darkTheme: darkTheme,
-  themeMode: themeProvider.themeMode,
-  initialRoute: '/login',
-  routes: {
-    '/login': (context) => const LoginScreen(),
-    '/home': (context) => const PlanifyHomeScreen(),
-  },
-  home: FutureBuilder<bool>(
-    future: _checkLogin(),
-    builder: (context, snapshot) {
-      if (!snapshot.hasData) {
-        return const Scaffold(
-          body: Center(child: CircularProgressIndicator()),
-        );
-      }
-      final isLoggedIn = snapshot.data!;
-      return isLoggedIn ? const PlanifyHomeScreen() : const LoginScreen();
-    },
-  ),
-);
-}
+    return MaterialApp(
+      title: 'Planify MVP',
+      theme: lightTheme,
+      darkTheme: darkTheme,
+      themeMode: themeProvider.themeMode,
+      home: StreamBuilder<User?>(
+        stream: FirebaseAuth.instance.authStateChanges(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            );
+          }
+          if (snapshot.hasData) {
+            return const PlanifyHomeScreen();
+          }
+          return const LoginScreen();
+        },
+      ),
+    );
+  }
 }
 
 class PlanifyHomeScreen extends StatefulWidget {
@@ -144,15 +140,31 @@ final screens = [
 Widget build(BuildContext context) {
 return Scaffold(
 body: screens[_index],
-bottomNavigationBar: BottomNavigationBar(
-type: BottomNavigationBarType.fixed,
-currentIndex: _index,
-onTap: (i) => setState(() => _index = i),
-items: const [
-BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: "Domov"),
-BottomNavigationBarItem(icon: Icon(Icons.timer), label: "Focus"),
-BottomNavigationBarItem(icon: Icon(Icons.settings), label: "Nastavitve"),
-],
+bottomNavigationBar: Container(
+  decoration: const BoxDecoration(
+    gradient: LinearGradient(
+      colors: [
+        Color(0xFF8E24AA),
+        Color(0xFFEC407A),
+      ],
+      begin: Alignment.centerLeft,
+      end: Alignment.centerRight,
+    ),
+  ),
+  child: BottomNavigationBar(
+    type: BottomNavigationBarType.fixed,
+    currentIndex: _index,
+    onTap: (i) => setState(() => _index = i),
+    backgroundColor: Colors.transparent,
+    elevation: 0,
+    selectedItemColor: Colors.white,
+    unselectedItemColor: Colors.white70,
+    items: const [
+      BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: "Domov"),
+      BottomNavigationBarItem(icon: Icon(Icons.timer), label: "Focus"),
+      BottomNavigationBarItem(icon: Icon(Icons.settings), label: "Nastavitve"),
+    ],
+  ),
 ),
 );
 }

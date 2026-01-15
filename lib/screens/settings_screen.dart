@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import '../providers/theme_provider.dart';
-import '../screens/login_screen.dart';
+import '../services/calendar_service.dart';
+import 'login_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
 const SettingsScreen({super.key});
@@ -13,20 +15,68 @@ State<SettingsScreen> createState() => _SettingsScreenState();
 
 class _SettingsScreenState extends State<SettingsScreen> {
 bool notifications = true;
+final CalendarService _calendarService = CalendarService();
+bool _calendarConnected = false;
+bool _isConnecting = false;
 
-Future<void> _logout() async {
-final prefs = await SharedPreferences.getInstance();
-await prefs.remove('user_id');
-
-
-if (mounted) {
-  Navigator.of(context).pushAndRemoveUntil(
-    MaterialPageRoute(builder: (_) => const LoginScreen()),
-    (route) => false,
-  );
+@override
+void initState() {
+  super.initState();
+  _checkCalendarConnection();
 }
 
+Future<void> _checkCalendarConnection() async {
+  final connected = await _calendarService.initialize();
+  if (mounted) {
+    setState(() => _calendarConnected = connected);
+  }
+}
 
+Future<void> _connectCalendar() async {
+  setState(() => _isConnecting = true);
+  try {
+    final success = await _calendarService.signInWithCalendar();
+    if (mounted) {
+      setState(() {
+        _calendarConnected = success;
+        _isConnecting = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(success
+              ? 'Google Calendar povezan!'
+              : 'Napaka pri povezovanju'),
+        ),
+      );
+    }
+  } catch (e) {
+    if (mounted) {
+      setState(() => _isConnecting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Napaka: $e')),
+      );
+    }
+  }
+}
+
+Future<void> _logout() async {
+  try {
+    await GoogleSignIn().signOut();
+    await FirebaseAuth.instance.signOut();
+    // Ročna navigacija na LoginScreen
+    if (mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (route) => false,
+      );
+    }
+  } catch (e) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Napaka pri odjavi: $e')),
+      );
+    }
+  }
 }
 
 @override
@@ -39,16 +89,36 @@ return Scaffold(
   body: SafeArea(
     child: ListView(
       children: [
-        ListTile(
-          title: Text(
-            "Nastavitve",
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: isDark ? Colors.white : Colors.black,
+        // GRADIENT HEADER
+        Container(
+          width: double.infinity,
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Color(0xFF8E24AA),
+                Color(0xFFEC407A),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
           ),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: const [
+              Text(
+                "Nastavitve",
+                style: TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              Icon(Icons.settings, color: Colors.white, size: 28),
+            ],
+          ),
         ),
+        const SizedBox(height: 8),
         SwitchListTile(
           title: Text(
             "Obvestila",
@@ -76,10 +146,27 @@ return Scaffold(
             style: TextStyle(color: isDark ? Colors.white : Colors.black),
           ),
           subtitle: Text(
-            "TODO: integracija",
+            _calendarConnected
+                ? "Povezan - roki se sinhronizirajo"
+                : "Poveži za sinhronizacijo rokov",
             style: TextStyle(color: isDark ? Colors.white70 : Colors.black54),
           ),
-          leading: Icon(Icons.calendar_month, color: isDark ? Colors.white70 : null),
+          leading: Icon(
+            _calendarConnected ? Icons.check_circle : Icons.calendar_month,
+            color: _calendarConnected ? Colors.green : (isDark ? Colors.white70 : null),
+          ),
+          trailing: _isConnecting
+              ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : _calendarConnected
+                  ? const Icon(Icons.check, color: Colors.green)
+                  : TextButton(
+                      onPressed: _connectCalendar,
+                      child: const Text('Poveži'),
+                    ),
         ),
         ListTile(
           title: Text(

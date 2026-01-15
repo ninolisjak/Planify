@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/db_service.dart';
+import '../services/calendar_service.dart';
 import '../models/exam_deadline.dart';
 
 class DeadlinesScreen extends StatefulWidget {
@@ -11,9 +12,11 @@ class DeadlinesScreen extends StatefulWidget {
 
 class _DeadlinesScreenState extends State<DeadlinesScreen> {
   final DBService _dbService = DBService();
+  final CalendarService _calendarService = CalendarService();
   List<ExamDeadline> _deadlines = [];
   List<Map<String, dynamic>> _subjects = [];
   bool _isLoading = true;
+  bool _calendarConnected = false;
 
   @override
   void initState() {
@@ -23,6 +26,7 @@ class _DeadlinesScreenState extends State<DeadlinesScreen> {
 
   Future<void> _initAndLoad() async {
     await _dbService.createExamDeadlinesTable();
+    _calendarConnected = await _calendarService.initialize();
     await _loadData();
   }
 
@@ -294,19 +298,48 @@ class _DeadlinesScreenState extends State<DeadlinesScreen> {
                 };
 
                 try {
+                  int? deadlineId;
                   if (isEditing) {
                     await _dbService.updateExamDeadline(deadline.id!, data);
+                    deadlineId = deadline.id;
                   } else {
-                    await _dbService.insertExamDeadline(data);
+                    deadlineId = await _dbService.insertExamDeadline(data);
                   }
+
+                  // Sinhronizacija z Google Calendar
+                  if (_calendarConnected && deadlineId != null) {
+                    DateTime eventDateTime = selectedDate;
+                    if (selectedTime != null) {
+                      eventDateTime = DateTime(
+                        selectedDate.year,
+                        selectedDate.month,
+                        selectedDate.day,
+                        selectedTime!.hour,
+                        selectedTime!.minute,
+                      );
+                    }
+                    
+                    final eventId = await _calendarService.addDeadlineToCalendar(
+                      title: 'Izpit',
+                      subjectName: subjectName,
+                      dateTime: eventDateTime,
+                      description: '${locationController.text.isNotEmpty ? "Lokacija: ${locationController.text}\n" : ""}${notesController.text}',
+                    );
+                    
+                    if (eventId != null) {
+                      // Shrani povezavo v bazo
+                      await _dbService.saveSyncStatus(deadlineId, eventId, 'deadline');
+                    }
+                  }
+
                   if (mounted) {
                     Navigator.pop(context);
                     _loadData();
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(isEditing
-                            ? 'Rok posodobljen'
-                            : 'Rok dodan'),
+                            ? 'Rok posodobljen${_calendarConnected ? " in sinhroniziran" : ""}'
+                            : 'Rok dodan${_calendarConnected ? " in dodan v Google Calendar" : ""}'),
                       ),
                     );
                   }
@@ -350,11 +383,22 @@ class _DeadlinesScreenState extends State<DeadlinesScreen> {
 
     if (confirmed == true) {
       try {
+        // Izbriši iz Google Calendar če obstaja
+        if (_calendarConnected) {
+          final eventId = await _dbService.getGoogleEventId(deadline.id!, 'deadline');
+          if (eventId != null) {
+            await _calendarService.deleteCalendarEvent(eventId);
+            await _dbService.deleteSyncStatus(deadline.id!, 'deadline');
+          }
+        }
+        
         await _dbService.deleteExamDeadline(deadline.id!);
         _loadData();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Rok izbrisan')),
+            SnackBar(content: Text(_calendarConnected 
+                ? 'Rok izbrisan iz aplikacije in koledarja' 
+                : 'Rok izbrisan')),
           );
         }
       } catch (e) {
@@ -385,9 +429,20 @@ class _DeadlinesScreenState extends State<DeadlinesScreen> {
       backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF5F5F5),
       appBar: AppBar(
         title: const Text('Izpitni roki'),
-        backgroundColor: const Color(0xFFEF5350),
         foregroundColor: Colors.white,
         elevation: 0,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Color(0xFF8E24AA),
+                Color(0xFFEC407A),
+              ],
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+            ),
+          ),
+        ),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -396,7 +451,7 @@ class _DeadlinesScreenState extends State<DeadlinesScreen> {
               : _buildDeadlinesList(isDark),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAddEditDialog(),
-        backgroundColor: const Color(0xFFEF5350),
+        backgroundColor: const Color(0xFF8E24AA),
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add),
         label: const Text('Dodaj rok'),

@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "110517099884",
+    "project_id": "planify-712d4",
+    "storage_bucket": "planify-712d4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:110517099884:android:073c158a06bfb5f59ee749",
+        "android_client_info": {
+          "package_name": "com.example.planify"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "110517099884-d1t41pog609piad5pus9jbgb7o2makqs.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.planify",
+            "certificate_hash": "6ac18fef4ae60b435f2836c571239897259e47be"
+          }
+        },
+        {
+          "client_id": "110517099884-dvt7ndjtps59n3uhhpvav20cukcd5vfr.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAis2sfflD-m_iCFKZuP4Xf5bx1PUFpwcs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "110517099884-dvt7ndjtps59n3uhhpvav20cukcd5vfr.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "110517099884-fstb624bl1r6b5ruupng5rpsn2peppo9.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.planify"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

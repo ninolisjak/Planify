@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as path;
 import '../services/db_service.dart';
-import '../services/flashcard_service.dart';
-import '../models/flashcard.dart';
-import 'flashcard_decks_screen.dart';
-import 'flashcard_edit_screen.dart';
-import 'flashcard_study_screen.dart';
+import '../services/calendar_service.dart';
 
 class SubjectDetailScreen extends StatefulWidget {
   final int subjectId;
@@ -27,20 +27,27 @@ class SubjectDetailScreen extends StatefulWidget {
 class _SubjectDetailScreenState extends State<SubjectDetailScreen>
     with SingleTickerProviderStateMixin {
   final DBService _dbService = DBService();
-  final FlashcardService _flashcardService = FlashcardService();
+  final CalendarService _calendarService = CalendarService();
+  final ImagePicker _imagePicker = ImagePicker();
 
   late TabController _tabController;
 
   List<Map<String, dynamic>> _tasks = [];
-  List<FlashcardDeck> _decks = [];
+  List<File> _materials = [];
   bool _isLoadingTasks = true;
-  bool _isLoadingDecks = true;
+  bool _isLoadingMaterials = true;
+  bool _calendarConnected = false;
 
   @override
   void initState() {
     super.initState();
+    _initCalendar();
     _tabController = TabController(length: 2, vsync: this);
     _loadData();
+  }
+
+  Future<void> _initCalendar() async {
+    _calendarConnected = await _calendarService.initialize();
   }
 
   @override
@@ -52,7 +59,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
   Future<void> _loadData() async {
     await Future.wait([
       _loadTasks(),
-      _loadDecks(),
+      _loadMaterials(),
     ]);
   }
 
@@ -69,18 +76,126 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
     }
   }
 
-  Future<void> _loadDecks() async {
-    setState(() => _isLoadingDecks = true);
+  Future<Directory> _getMaterialsDirectory() async {
+    final appDir = await getApplicationDocumentsDirectory();
+    final materialsDir = Directory('${appDir.path}/gradivo/${widget.subjectId}');
+    if (!await materialsDir.exists()) {
+      await materialsDir.create(recursive: true);
+    }
+    return materialsDir;
+  }
+
+  Future<void> _loadMaterials() async {
+    setState(() => _isLoadingMaterials = true);
     try {
-      await _flashcardService.createTables();
-      final decks = await _flashcardService.getAllDecks(subjectId: widget.subjectId);
+      final dir = await _getMaterialsDirectory();
+      final files = dir.listSync().whereType<File>().toList();
+      files.sort((a, b) => b.lastModifiedSync().compareTo(a.lastModifiedSync()));
       setState(() {
-        _decks = decks;
-        _isLoadingDecks = false;
+        _materials = files;
+        _isLoadingMaterials = false;
       });
     } catch (e) {
-      setState(() => _isLoadingDecks = false);
+      setState(() => _isLoadingMaterials = false);
     }
+  }
+
+  Future<void> _addMaterial({bool fromCamera = false}) async {
+    try {
+      final XFile? image = fromCamera
+          ? await _imagePicker.pickImage(source: ImageSource.camera)
+          : await _imagePicker.pickImage(source: ImageSource.gallery);
+      
+      if (image == null) return;
+
+      final dir = await _getMaterialsDirectory();
+      final fileName = 'gradivo_${DateTime.now().millisecondsSinceEpoch}${path.extension(image.path)}';
+      final savedFile = await File(image.path).copy('${dir.path}/$fileName');
+      
+      setState(() {
+        _materials.insert(0, savedFile);
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Gradivo dodano')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Napaka: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteMaterial(File file) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Izbriši gradivo'),
+        content: const Text('Ali ste prepričani, da želite izbrisati to sliko?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Prekliči'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Izbriši'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await file.delete();
+        _loadMaterials();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Gradivo izbrisano')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Napaka: $e')),
+          );
+        }
+      }
+    }
+  }
+
+  void _showMaterialOptions() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: const Text('Fotografiraj'),
+              onTap: () {
+                Navigator.pop(context);
+                _addMaterial(fromCamera: true);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('Izberi iz galerije'),
+              onTap: () {
+                Navigator.pop(context);
+                _addMaterial(fromCamera: false);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Color _getColorFromHex(String? hexColor) {
@@ -92,11 +207,6 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
     } catch (e) {
       return const Color(0xFF8E24AA);
     }
-  }
-
-  Color _hexToColor(String hex) {
-    hex = hex.replaceFirst('#', '');
-    return Color(int.parse('FF$hex', radix: 16));
   }
 
   Future<void> _showAddEditTaskDialog({Map<String, dynamic>? task}) async {
@@ -202,17 +312,36 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
                 };
 
                 try {
+                  int? taskId;
                   if (isEditing) {
                     await _dbService.updateTask(task['id'], data);
+                    taskId = task['id'];
                   } else {
-                    await _dbService.insertTask(data);
+                    taskId = await _dbService.insertTask(data);
                   }
+
+                  // Sinhronizacija z Google Calendar
+                  if (_calendarConnected && taskId != null && !isEditing) {
+                    final eventId = await _calendarService.addTaskToCalendar(
+                      taskTitle: title,
+                      subjectName: widget.subjectName,
+                      dueDate: selectedDate,
+                      description: descriptionController.text.trim(),
+                    );
+                    
+                    if (eventId != null) {
+                      await _dbService.saveSyncStatus(taskId, eventId, 'task');
+                    }
+                  }
+
                   if (mounted) {
                     Navigator.pop(context);
                     _loadTasks();
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text(isEditing ? 'Naloga posodobljena' : 'Naloga dodana'),
+                        content: Text(isEditing 
+                            ? 'Naloga posodobljena' 
+                            : 'Naloga dodana${_calendarConnected ? " in sinhronizirana" : ""}'),
                       ),
                     );
                   }
@@ -254,11 +383,22 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
 
     if (confirmed == true) {
       try {
+        // Izbriši iz Google Calendar če obstaja
+        if (_calendarConnected) {
+          final eventId = await _dbService.getGoogleEventId(task['id'], 'task');
+          if (eventId != null) {
+            await _calendarService.deleteCalendarEvent(eventId);
+            await _dbService.deleteSyncStatus(task['id'], 'task');
+          }
+        }
+        
         await _dbService.deleteTask(task['id']);
         _loadTasks();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Naloga izbrisana')),
+            SnackBar(content: Text(_calendarConnected 
+                ? 'Naloga izbrisana iz aplikacije in koledarja' 
+                : 'Naloga izbrisana')),
           );
         }
       } catch (e) {
@@ -275,98 +415,6 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
     final newStatus = (task['is_completed'] ?? 0) == 1 ? 0 : 1;
     await _dbService.updateTask(task['id'], {'is_completed': newStatus});
     _loadTasks();
-  }
-
-  void _showCreateDeckDialog() {
-    final nameController = TextEditingController();
-    final descController = TextEditingController();
-    String selectedColor = widget.subjectColor ?? '#9C27B0';
-
-    final colors = [
-      '#9C27B0', '#E91E63', '#F44336', '#FF9800',
-      '#4CAF50', '#2196F3', '#3F51B5', '#607D8B',
-    ];
-
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Nov komplet'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Ime kompleta',
-                    hintText: 'npr. Poglavje 1',
-                  ),
-                  autofocus: true,
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: descController,
-                  decoration: const InputDecoration(
-                    labelText: 'Opis (opcijsko)',
-                    hintText: 'npr. Besedišče za izpit',
-                  ),
-                  maxLines: 2,
-                ),
-                const SizedBox(height: 16),
-                const Text('Barva:', style: TextStyle(fontSize: 12)),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  children: colors.map((color) {
-                    final isSelected = selectedColor == color;
-                    return GestureDetector(
-                      onTap: () => setDialogState(() => selectedColor = color),
-                      child: Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: _hexToColor(color),
-                          shape: BoxShape.circle,
-                          border: isSelected
-                              ? Border.all(color: Colors.black, width: 3)
-                              : null,
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Prekliči'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                if (nameController.text.trim().isEmpty) return;
-
-                final deck = FlashcardDeck(
-                  subjectId: widget.subjectId,
-                  name: nameController.text.trim(),
-                  description: descController.text.trim().isEmpty
-                      ? null
-                      : descController.text.trim(),
-                  color: selectedColor,
-                );
-
-                await _flashcardService.insertDeck(deck);
-                Navigator.pop(context);
-                _loadDecks();
-              },
-              child: const Text('Ustvari'),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   @override
@@ -389,7 +437,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
           unselectedLabelColor: Colors.white70,
           tabs: const [
             Tab(icon: Icon(Icons.assignment), text: 'Naloge'),
-            Tab(icon: Icon(Icons.style), text: 'Flashcards'),
+            Tab(icon: Icon(Icons.photo_library), text: 'Gradivo'),
           ],
         ),
       ),
@@ -397,7 +445,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
         controller: _tabController,
         children: [
           _buildTasksTab(isDark),
-          _buildFlashcardsTab(isDark),
+          _buildMaterialsTab(isDark),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -405,7 +453,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
           if (_tabController.index == 0) {
             _showAddEditTaskDialog();
           } else {
-            _showCreateDeckDialog();
+            _showMaterialOptions();
           }
         },
         backgroundColor: color,
@@ -414,7 +462,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
         label: AnimatedBuilder(
           animation: _tabController,
           builder: (context, child) {
-            return Text(_tabController.index == 0 ? 'Dodaj nalogo' : 'Nov komplet');
+            return Text(_tabController.index == 0 ? 'Dodaj nalogo' : 'Dodaj gradivo');
           },
         ),
       ),
@@ -624,24 +672,24 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
     );
   }
 
-  Widget _buildFlashcardsTab(bool isDark) {
-    if (_isLoadingDecks) {
+  Widget _buildMaterialsTab(bool isDark) {
+    if (_isLoadingMaterials) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (_decks.isEmpty) {
+    if (_materials.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              Icons.style_outlined,
+              Icons.photo_library_outlined,
               size: 80,
               color: Colors.grey[400],
             ),
             const SizedBox(height: 16),
             Text(
-              'Ni kompletov',
+              'Ni gradiva',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -650,7 +698,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
             ),
             const SizedBox(height: 8),
             Text(
-              'Ustvarite svoj prvi komplet kartic',
+              'Dodajte slike zapiskov, screenshotov...',
               style: TextStyle(color: Colors.grey[500]),
             ),
           ],
@@ -658,158 +706,113 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
       );
     }
 
-    return ListView.builder(
+    return GridView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: _decks.length,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+      ),
+      itemCount: _materials.length,
       itemBuilder: (context, index) {
-        final deck = _decks[index];
-        return _buildDeckCard(deck, isDark);
+        final file = _materials[index];
+        return _buildMaterialCard(file, isDark);
       },
     );
   }
 
-  Widget _buildDeckCard(FlashcardDeck deck, bool isDark) {
-    final color = _hexToColor(deck.color);
+  Widget _buildMaterialCard(File file, bool isDark) {
+    final color = _getColorFromHex(widget.subjectColor);
+    final fileName = path.basename(file.path);
+    final modifiedDate = file.lastModifiedSync();
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+      clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: InkWell(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => FlashcardEditScreen(deck: deck),
-            ),
-          ).then((_) => _loadDecks());
-        },
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: color.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(Icons.style, color: color, size: 28),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          deck.name,
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: isDark ? Colors.white : Colors.black,
-                          ),
-                        ),
-                        if (deck.description != null) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            deck.description!,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: isDark ? Colors.white54 : Colors.black54,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  PopupMenuButton<String>(
-                    icon: Icon(
-                      Icons.more_vert,
-                      color: isDark ? Colors.white54 : Colors.black54,
-                    ),
-                    onSelected: (value) async {
-                      if (value == 'delete') {
-                        final confirmed = await showDialog<bool>(
-                          context: context,
-                          builder: (context) => AlertDialog(
-                            title: const Text('Izbriši komplet?'),
-                            content: Text('Ali res želiš izbrisati "${deck.name}"?'),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context, false),
-                                child: const Text('Prekliči'),
-                              ),
-                              ElevatedButton(
-                                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                                onPressed: () => Navigator.pop(context, true),
-                                child: const Text('Izbriši', style: TextStyle(color: Colors.white)),
-                              ),
-                            ],
-                          ),
-                        );
-                        if (confirmed == true) {
-                          await _flashcardService.deleteDeck(deck.id!);
-                          _loadDecks();
-                        }
-                      }
-                    },
-                    itemBuilder: (context) => [
-                      const PopupMenuItem(
-                        value: 'delete',
-                        child: Row(
-                          children: [
-                            Icon(Icons.delete, size: 20, color: Colors.red),
-                            SizedBox(width: 8),
-                            Text('Izbriši', style: TextStyle(color: Colors.red)),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+        onTap: () => _showFullScreenImage(file),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.file(
+              file,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Container(
+                color: Colors.grey[300],
+                child: const Icon(Icons.broken_image, size: 48),
               ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Icon(Icons.layers, size: 16, color: isDark ? Colors.white54 : Colors.black45),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${deck.cardCount} kartic',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: isDark ? Colors.white54 : Colors.black54,
-                    ),
+            ),
+            Positioned(
+              top: 8,
+              right: 8,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: IconButton(
+                  icon: const Icon(Icons.delete, color: Colors.white, size: 20),
+                  onPressed: () => _deleteMaterial(file),
+                  padding: const EdgeInsets.all(4),
+                  constraints: const BoxConstraints(),
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Colors.transparent, Colors.black.withOpacity(0.7)],
                   ),
-                  const Spacer(),
-                  ElevatedButton.icon(
-                    onPressed: deck.cardCount > 0
-                        ? () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => FlashcardStudyScreen(deck: deck),
-                              ),
-                            ).then((_) => _loadDecks());
-                          }
-                        : null,
-                    icon: const Icon(Icons.play_arrow, size: 20),
-                    label: const Text('Učenje'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: color,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    ),
+                ),
+                child: Text(
+                  '${modifiedDate.day}.${modifiedDate.month}.${modifiedDate.year}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
                   ),
-                ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showFullScreenImage(File file) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            backgroundColor: Colors.black,
+            foregroundColor: Colors.white,
+            title: const Text('Gradivo'),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.delete),
+                onPressed: () {
+                  Navigator.pop(context);
+                  _deleteMaterial(file);
+                },
               ),
             ],
+          ),
+          body: Center(
+            child: InteractiveViewer(
+              panEnabled: true,
+              minScale: 0.5,
+              maxScale: 4,
+              child: Image.file(file),
+            ),
           ),
         ),
       ),
