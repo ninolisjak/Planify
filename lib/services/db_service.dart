@@ -174,6 +174,19 @@ class DBService {
     return await db.query('tasks', where: 'user_id = ?', whereArgs: [userId], orderBy: 'due_date');
   }
 
+  Future<Map<String, dynamic>?> getTaskById(int taskId) async {
+    final db = await database;
+    final userId = currentUserId;
+    if (userId == null) return null;
+    final results = await db.query(
+      'tasks',
+      where: 'id = ? AND user_id = ?',
+      whereArgs: [taskId, userId],
+      limit: 1,
+    );
+    return results.isNotEmpty ? results.first : null;
+  }
+
   Future<List<Map<String, dynamic>>> getTasksForSubject(int subjectId) async {
     final db = await database;
     return await db.query(
@@ -187,6 +200,16 @@ class DBService {
   Future<int> updateTask(int id, Map<String, dynamic> row) async {
     final db = await database;
     return await db.update('tasks', row, where: 'id = ? AND user_id = ?', whereArgs: [id, currentUserId]);
+  }
+
+  Future<int> updateTaskStatus(int id, bool isCompleted) async {
+    final db = await database;
+    return await db.update(
+      'tasks',
+      {'is_completed': isCompleted ? 1 : 0},
+      where: 'id = ? AND user_id = ?',
+      whereArgs: [id, currentUserId],
+    );
   }
 
   Future<int> deleteTask(int id) async {

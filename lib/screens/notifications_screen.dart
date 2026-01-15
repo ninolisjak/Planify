@@ -1,4 +1,10 @@
 import 'package:flutter/material.dart';
+import '../services/notification_service.dart';
+import '../services/db_service.dart';
+import 'task_detail_screen.dart';
+import 'subject_detail_screen.dart';
+import 'deadlines_screen.dart';
+import 'subjects_screen.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -8,73 +14,202 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
-  // Mock obvestila - zamenjaj s pravimi iz baze/Firebase
-  final List<NotificationItem> _notifications = [
-    NotificationItem(
-      id: '1',
-      title: 'Rok za oddajo projektne naloge',
-      body: 'Projekt iz programiranja je potrebno oddati do 20.1.2026',
-      time: DateTime.now().subtract(const Duration(hours: 2)),
-      isRead: false,
-      type: NotificationType.deadline,
-    ),
-    NotificationItem(
-      id: '2',
-      title: 'Focus seja končana',
-      body: 'Odlično! Končal si 25-minutno focus sejo.',
-      time: DateTime.now().subtract(const Duration(hours: 5)),
-      isRead: false,
-      type: NotificationType.achievement,
-    ),
-    NotificationItem(
-      id: '3',
-      title: 'Novi flashcards',
-      body: '15 kartic čaka na pregled v kompletu "Angleščina"',
-      time: DateTime.now().subtract(const Duration(days: 1)),
-      isRead: true,
-      type: NotificationType.reminder,
-    ),
-    NotificationItem(
-      id: '4',
-      title: 'Izpit čez 3 dni',
-      body: 'Ne pozabi: Izpit iz matematike je 16.1.2026',
-      time: DateTime.now().subtract(const Duration(days: 2)),
-      isRead: true,
-      type: NotificationType.reminder,
-    ),
-  ];
+  final NotificationService _notificationService = NotificationService();
+  final DBService _dbService = DBService();
+  List<AppNotification> _notifications = [];
+  bool _isLoading = true;
 
-  void _markAsRead(String id) {
-    setState(() {
-      final notification = _notifications.firstWhere((n) => n.id == id);
-      notification.isRead = true;
-    });
+  @override
+  void initState() {
+    super.initState();
+    _loadNotifications();
   }
 
-  void _markAllAsRead() {
-    setState(() {
-      for (var notification in _notifications) {
-        notification.isRead = true;
+  Future<void> _loadNotifications() async {
+    setState(() => _isLoading = true);
+    try {
+      final notifications = await _notificationService.getNotifications();
+      setState(() {
+        _notifications = notifications;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _markAsRead(int id) async {
+    await _notificationService.markAsRead(id);
+    _loadNotifications();
+  }
+
+  Future<void> _markAllAsRead() async {
+    await _notificationService.markAllAsRead();
+    _loadNotifications();
+  }
+
+  Future<void> _deleteNotification(int id) async {
+    await _notificationService.deleteNotification(id);
+    _loadNotifications();
+  }
+
+  Future<void> _deleteAllNotifications() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Izbriši vsa obvestila'),
+        content: const Text('Ali ste prepričani, da želite izbrisati vsa obvestila?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Prekliči'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Izbriši vse'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await _notificationService.deleteAllNotifications();
+      _loadNotifications();
+    }
+  }
+
+  /// Navigiraj glede na tip obvestila
+  Future<void> _handleNotificationTap(AppNotification notification) async {
+    // Označi kot prebrano
+    if (!notification.isRead && notification.id != null) {
+      await _markAsRead(notification.id!);
+    }
+
+    switch (notification.type) {
+      case NotificationType.deadline:
+        // Pojdi na stran Roki
+        if (mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const DeadlinesScreen(),
+            ),
+          );
+        }
+        break;
+        
+      case NotificationType.task:
+        // Poskusi najti nalogo glede na naslov
+        await _navigateToTask(notification);
+        break;
+        
+      case NotificationType.material:
+        // Poskusi najti predmet
+        await _navigateToSubject(notification);
+        break;
+        
+      case NotificationType.focusSession:
+        // Za focus samo zapremo - uporabnik gre sam na tab
+        Navigator.pop(context);
+        break;
+        
+      case NotificationType.info:
+      default:
+        // Samo označi kot prebrano, brez navigacije
+        break;
+    }
+  }
+
+  Future<void> _navigateToTask(AppNotification notification) async {
+    // Poiščemo nalogo po naslovu iz obvestila
+    final tasks = await _dbService.getAllTasks();
+    final subjects = await _dbService.getAllSubjects();
+    
+    // Poskusimo najti nalogo
+    for (var task in tasks) {
+      final taskTitle = task['title'] as String;
+      if (notification.body.contains(taskTitle)) {
+        // Najdemo predmet
+        final subjectId = task['subject_id'];
+        final subject = subjects.firstWhere(
+          (s) => s['id'] == subjectId,
+          orElse: () => {'name': 'Neznano', 'color': '#8E24AA'},
+        );
+        
+        if (mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => TaskDetailScreen(
+                taskId: task['id'],
+                subjectName: subject['name'] ?? 'Neznano',
+                subjectColor: subject['color'] ?? '#8E24AA',
+              ),
+            ),
+          );
+        }
+        return;
       }
-    });
+    }
+    
+    // Če ne najdemo, pojdimo na stran Roki
+    if (mounted) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const DeadlinesScreen(),
+        ),
+      );
+    }
   }
 
-  void _deleteNotification(String id) {
-    setState(() {
-      _notifications.removeWhere((n) => n.id == id);
-    });
+  Future<void> _navigateToSubject(AppNotification notification) async {
+    final subjects = await _dbService.getAllSubjects();
+    
+    // Poskusimo najti predmet iz obvestila
+    for (var subject in subjects) {
+      final subjectName = subject['name'] as String;
+      if (notification.body.contains(subjectName)) {
+        if (mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => SubjectDetailScreen(
+                subjectId: subject['id'],
+                subjectName: subjectName,
+                subjectColor: subject['color'] ?? '#8E24AA',
+              ),
+            ),
+          );
+        }
+        return;
+      }
+    }
+    
+    // Če ne najdemo, pojdimo na stran Predmeti
+    if (mounted) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const SubjectsScreen(),
+        ),
+      );
+    }
   }
 
   String _formatTime(DateTime time) {
     final now = DateTime.now();
     final difference = now.difference(time);
 
-    if (difference.inMinutes < 60) {
+    if (difference.inMinutes < 1) {
+      return 'Pravkar';
+    } else if (difference.inMinutes < 60) {
       return 'Pred ${difference.inMinutes} min';
     } else if (difference.inHours < 24) {
       return 'Pred ${difference.inHours} h';
     } else if (difference.inDays < 7) {
-      return 'Pred ${difference.inDays} dni';
+      return 'Pred ${difference.inDays} ${difference.inDays == 1 ? 'dnem' : 'dnevi'}';
     } else {
       return '${time.day}.${time.month}.${time.year}';
     }
@@ -100,29 +235,55 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               ),
           ],
         ),
+        foregroundColor: Colors.white,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF8E24AA), Color(0xFFEC407A)],
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+            ),
+          ),
+        ),
         actions: [
           if (unreadCount > 0)
             TextButton(
               onPressed: _markAllAsRead,
-              child: const Text('Označi vse', style: TextStyle(color: Colors.white)),
+              child: const Text('Preberi vse', style: TextStyle(color: Colors.white)),
+            ),
+          if (_notifications.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.delete_sweep),
+              onPressed: _deleteAllNotifications,
+              tooltip: 'Izbriši vse',
             ),
         ],
       ),
-      body: _notifications.isEmpty
-          ? _buildEmptyState(isDark)
-          : ListView.builder(
-              itemCount: _notifications.length,
-              itemBuilder: (context, index) {
-                final notification = _notifications[index];
-                return _NotificationCard(
-                  notification: notification,
-                  isDark: isDark,
-                  onTap: () => _markAsRead(notification.id),
-                  onDismiss: () => _deleteNotification(notification.id),
-                  formatTime: _formatTime(notification.time),
-                );
-              },
-            ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _notifications.isEmpty
+              ? _buildEmptyState(isDark)
+              : RefreshIndicator(
+                  onRefresh: _loadNotifications,
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(8),
+                    itemCount: _notifications.length,
+                    itemBuilder: (context, index) {
+                      final notification = _notifications[index];
+                      return _NotificationCard(
+                        notification: notification,
+                        isDark: isDark,
+                        onTap: () => _handleNotificationTap(notification),
+                        onDismiss: () {
+                          if (notification.id != null) {
+                            _deleteNotification(notification.id!);
+                          }
+                        },
+                        formatTime: _formatTime(notification.createdAt),
+                      );
+                    },
+                  ),
+                ),
     );
   }
 
@@ -131,27 +292,38 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.notifications_none,
-            size: 80,
-            color: isDark ? Colors.white24 : Colors.black26,
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.notifications_none,
+              size: 64,
+              color: isDark ? Colors.white38 : Colors.black38,
+            ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 24),
           Text(
             'Ni obvestil',
             style: TextStyle(
-              fontSize: 20,
+              fontSize: 22,
               fontWeight: FontWeight.bold,
               color: isDark ? Colors.white : Colors.black,
             ),
           ),
           const SizedBox(height: 8),
-          Text(
-            'Ko boš imel nova obvestila, se bodo prikazala tukaj',
-            style: TextStyle(
-              color: isDark ? Colors.white70 : Colors.black54,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Text(
+              'Ko boš dodal izpitne roke, naloge ali končal focus sejo, se bodo obvestila prikazala tukaj.',
+              style: TextStyle(
+                color: isDark ? Colors.white70 : Colors.black54,
+                fontSize: 14,
+              ),
+              textAlign: TextAlign.center,
             ),
-            textAlign: TextAlign.center,
           ),
         ],
       ),
@@ -160,7 +332,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 }
 
 class _NotificationCard extends StatelessWidget {
-  final NotificationItem notification;
+  final AppNotification notification;
   final bool isDark;
   final VoidCallback onTap;
   final VoidCallback onDismiss;
@@ -174,55 +346,33 @@ class _NotificationCard extends StatelessWidget {
     required this.formatTime,
   });
 
-  IconData _getIcon() {
-    switch (notification.type) {
-      case NotificationType.deadline:
-        return Icons.event;
-      case NotificationType.achievement:
-        return Icons.emoji_events;
-      case NotificationType.reminder:
-        return Icons.notifications;
-      case NotificationType.info:
-        return Icons.info;
-    }
-  }
-
-  Color _getColor() {
-    switch (notification.type) {
-      case NotificationType.deadline:
-        return Colors.red;
-      case NotificationType.achievement:
-        return Colors.amber;
-      case NotificationType.reminder:
-        return Colors.blue;
-      case NotificationType.info:
-        return Colors.grey;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Dismissible(
-      key: Key(notification.id),
+      key: Key('notification_${notification.id}'),
       direction: DismissDirection.endToStart,
       onDismissed: (_) => onDismiss(),
       background: Container(
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
-        color: Colors.red,
+        margin: const EdgeInsets.symmetric(vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.red,
+          borderRadius: BorderRadius.circular(12),
+        ),
         child: const Icon(Icons.delete, color: Colors.white),
       ),
       child: Card(
-        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        margin: const EdgeInsets.symmetric(vertical: 4),
+        color: isDark 
+            ? (notification.isRead ? const Color(0xFF1E1E1E) : const Color(0xFF2D2D2D))
+            : (notification.isRead ? Colors.white : Colors.white),
+        elevation: notification.isRead ? 0 : 2,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
-          side: notification.isRead
-              ? BorderSide.none
-              : BorderSide(
-                  color: _getColor().withOpacity(0.5),
-                  width: 2,
-                ),
+          side: notification.isRead 
+              ? BorderSide.none 
+              : BorderSide(color: notification.color.withOpacity(0.5), width: 1),
         ),
         child: InkWell(
           onTap: onTap,
@@ -233,15 +383,14 @@ class _NotificationCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  width: 40,
-                  height: 40,
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: _getColor().withOpacity(0.2),
+                    color: notification.color.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
-                    _getIcon(),
-                    color: _getColor(),
+                    notification.icon,
+                    color: notification.color,
                     size: 24,
                   ),
                 ),
@@ -256,11 +405,9 @@ class _NotificationCard extends StatelessWidget {
                             child: Text(
                               notification.title,
                               style: TextStyle(
+                                fontWeight: notification.isRead ? FontWeight.normal : FontWeight.bold,
                                 fontSize: 15,
-                                fontWeight: notification.isRead
-                                    ? FontWeight.normal
-                                    : FontWeight.bold,
-                                color: isDark ? Colors.white : Colors.black,
+                                color: isDark ? Colors.white : Colors.black87,
                               ),
                             ),
                           ),
@@ -269,7 +416,7 @@ class _NotificationCard extends StatelessWidget {
                               width: 8,
                               height: 8,
                               decoration: BoxDecoration(
-                                color: _getColor(),
+                                color: notification.color,
                                 shape: BoxShape.circle,
                               ),
                             ),
@@ -279,18 +426,16 @@ class _NotificationCard extends StatelessWidget {
                       Text(
                         notification.body,
                         style: TextStyle(
-                          fontSize: 13,
                           color: isDark ? Colors.white70 : Colors.black54,
+                          fontSize: 13,
                         ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 8),
                       Text(
                         formatTime,
                         style: TextStyle(
-                          fontSize: 11,
                           color: isDark ? Colors.white38 : Colors.black38,
+                          fontSize: 11,
                         ),
                       ),
                     ],
@@ -303,29 +448,4 @@ class _NotificationCard extends StatelessWidget {
       ),
     );
   }
-}
-
-class NotificationItem {
-  final String id;
-  final String title;
-  final String body;
-  final DateTime time;
-  bool isRead;
-  final NotificationType type;
-
-  NotificationItem({
-    required this.id,
-    required this.title,
-    required this.body,
-    required this.time,
-    this.isRead = false,
-    this.type = NotificationType.info,
-  });
-}
-
-enum NotificationType {
-  deadline,
-  achievement,
-  reminder,
-  info,
 }

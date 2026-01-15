@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/db_service.dart';
 import '../services/calendar_service.dart';
+import '../services/notification_service.dart';
 import '../models/exam_deadline.dart';
 
 class DeadlinesScreen extends StatefulWidget {
@@ -13,6 +14,7 @@ class DeadlinesScreen extends StatefulWidget {
 class _DeadlinesScreenState extends State<DeadlinesScreen> {
   final DBService _dbService = DBService();
   final CalendarService _calendarService = CalendarService();
+  final NotificationService _notificationService = NotificationService();
   List<ExamDeadline> _deadlines = [];
   List<Map<String, dynamic>> _subjects = [];
   bool _isLoading = true;
@@ -330,6 +332,11 @@ class _DeadlinesScreenState extends State<DeadlinesScreen> {
                       // Shrani povezavo v bazo
                       await _dbService.saveSyncStatus(deadlineId, eventId, 'deadline');
                     }
+                  }
+
+                  // Dodaj obvestilo za nov rok
+                  if (!isEditing) {
+                    await _notificationService.notifyDeadlineAdded(subjectName, selectedDate);
                   }
 
                   if (mounted) {

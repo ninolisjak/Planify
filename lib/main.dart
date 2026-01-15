@@ -9,7 +9,7 @@ import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/focus_timer_screen.dart';
 import 'screens/settings_screen.dart';
-import 'screens/flashcards_screen.dart';
+// Flashcards zamenjani z Gradivo
 import 'services/db_service.dart';
 
 void main() async {

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import '../widgets/subject_list.dart';
 import '../models/weather.dart';
-import '../models/task.dart';
 import '../services/weather_service.dart';
 import '../services/db_service.dart';
+import '../services/notification_service.dart';
 import 'flashcard_decks_screen.dart';
 import 'settings_screen.dart';
 import 'notifications_screen.dart';
@@ -21,6 +21,7 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   final WeatherService _weatherService = WeatherService();
   final DBService _dbService = DBService();
+  final NotificationService _notificationService = NotificationService();
   
   Weather? _weather;
   bool _isLoadingWeather = true;
@@ -33,6 +34,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // Izpitni roki
   int? _daysToNextExam;
   String? _nextExamSubject;
+  
+  // Neprebrana obvestila
+  int _unreadNotifications = 0;
 
   @override
   void initState() {
@@ -40,6 +44,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _loadWeather();
     _loadTodayTasks();
     _loadNextExam();
+    _loadUnreadCount();
+    _checkUpcomingReminders();
+  }
+  
+  /// Preveri prihajajoče roke in naloge ter ustvari obvestila
+  Future<void> _checkUpcomingReminders() async {
+    await _notificationService.checkUpcomingDeadlines();
+    await _notificationService.checkUpcomingTasks();
+  }
+  
+  Future<void> _loadUnreadCount() async {
+    final count = await _notificationService.getUnreadCount();
+    if (mounted) {
+      setState(() {
+        _unreadNotifications = count;
+      });
+    }
   }
 
   Future<void> _loadNextExam() async {
@@ -172,6 +193,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void _refreshData() {
     _loadTodayTasks();
     _loadNextExam();
+    _loadUnreadCount();
   }
 
   @override
@@ -215,21 +237,56 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                       Row(
                         children: [
-                          IconButton(
-                            icon: const Icon(
-                              Icons.notifications_none,
-                              color: Colors.white,
-                            ),
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const NotificationsScreen(),
+                          Stack(
+                            children: [
+                              IconButton(
+                                icon: Icon(
+                                  _unreadNotifications > 0 
+                                    ? Icons.notifications 
+                                    : Icons.notifications_none,
+                                  color: Colors.white,
                                 ),
-                              );
-                            },
+                                onPressed: () async {
+                                  await Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const NotificationsScreen(),
+                                    ),
+                                  );
+                                  // Osveži število neprebranih po vrnitvi
+                                  _loadUnreadCount();
+                                },
+                              ),
+                              if (_unreadNotifications > 0)
+                                Positioned(
+                                  right: 8,
+                                  top: 8,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: const BoxDecoration(
+                                      color: Colors.red,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    constraints: const BoxConstraints(
+                                      minWidth: 18,
+                                      minHeight: 18,
+                                    ),
+                                    child: Text(
+                                      _unreadNotifications > 9 
+                                        ? '9+' 
+                                        : '$_unreadNotifications',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 4),
                           IconButton(
                             icon: const Icon(
                               Icons.settings,

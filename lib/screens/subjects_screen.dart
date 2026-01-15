@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/db_service.dart';
-import 'flashcard_decks_screen.dart';
+// Flashcards zamenjani z Gradivo
 import 'subject_detail_screen.dart';
 
 class SubjectsScreen extends StatefulWidget {

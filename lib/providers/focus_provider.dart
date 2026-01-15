@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import '../services/notification_service.dart';
 
 class FocusProvider extends ChangeNotifier {
   // dolžine faz
@@ -12,11 +13,18 @@ class FocusProvider extends ChangeNotifier {
   bool _isBreak = false; // false = fokus, true = odmor
   bool _isFullscreen = false; // za fullscreen način
   Timer? _timer;
+  
+  // Tracking za statistiko
+  int _completedCycles = 0;
+  int _totalFocusMinutes = 0;
+  final NotificationService _notificationService = NotificationService();
 
   bool get isRunning => _isRunning;
   bool get isBreak => _isBreak;
   bool get isFullscreen => _isFullscreen;
   int get remainingSeconds => _remainingSeconds;
+  int get completedCycles => _completedCycles;
+  int get totalFocusMinutes => _totalFocusMinutes;
 
   String get formattedTime {
     final m = _remainingSeconds ~/ 60;
@@ -41,6 +49,15 @@ class FocusProvider extends ChangeNotifier {
 
         if (!_isBreak) {
           // končan fokus -> odmor
+          _completedCycles++;
+          _totalFocusMinutes += workMinutes;
+          
+          // Pošlji obvestilo o končani focus seji
+          _notificationService.notifyFocusSessionCompleted(
+            workMinutes,
+            _completedCycles,
+          );
+          
           _isBreak = true;
           _remainingSeconds = breakMinutes * 60;
         } else {
@@ -85,6 +102,13 @@ class FocusProvider extends ChangeNotifier {
     _isBreak = false;
     _isFullscreen = false;
     _remainingSeconds = workMinutes * 60;
+    // NE resetiramo _completedCycles in _totalFocusMinutes - to so dnevne statistike
+    notifyListeners();
+  }
+
+  void resetDailyStats() {
+    _completedCycles = 0;
+    _totalFocusMinutes = 0;
     notifyListeners();
   }
 

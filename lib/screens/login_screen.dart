@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import '../services/db_service.dart';
+// db_service ni več potreben tukaj
 import 'dashboard_screen.dart';
 import 'focus_timer_screen.dart';
 import 'settings_screen.dart';

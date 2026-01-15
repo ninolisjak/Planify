@@ -5,6 +5,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 import '../services/db_service.dart';
 import '../services/calendar_service.dart';
+import '../services/notification_service.dart';
+import 'task_detail_screen.dart';
 
 class SubjectDetailScreen extends StatefulWidget {
   final int subjectId;
@@ -28,6 +30,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
     with SingleTickerProviderStateMixin {
   final DBService _dbService = DBService();
   final CalendarService _calendarService = CalendarService();
+  final NotificationService _notificationService = NotificationService();
   final ImagePicker _imagePicker = ImagePicker();
 
   late TabController _tabController;
@@ -115,6 +118,9 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
       setState(() {
         _materials.insert(0, savedFile);
       });
+
+      // Dodaj obvestilo za novo gradivo
+      await _notificationService.notifyMaterialAdded(widget.subjectName);
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -332,6 +338,15 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
                     if (eventId != null) {
                       await _dbService.saveSyncStatus(taskId, eventId, 'task');
                     }
+                  }
+
+                  // Dodaj obvestilo za novo nalogo
+                  if (!isEditing) {
+                    await _notificationService.notifyTaskAdded(
+                      title,
+                      widget.subjectName,
+                      selectedDate,
+                    );
                   }
 
                   if (mounted) {
@@ -568,6 +583,22 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
         opacity: isCompleted ? 0.6 : 1.0,
         child: ListTile(
           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          onTap: () async {
+            final result = await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => TaskDetailScreen(
+                  taskId: task['id'],
+                  subjectName: widget.subjectName,
+                  subjectColor: widget.subjectColor ?? '#8E24AA',
+                ),
+              ),
+            );
+            // Če je bila naloga izbrisana ali spremenjena, osveži seznam
+            if (result == true) {
+              _loadTasks();
+            }
+          },
           leading: Checkbox(
             value: isCompleted,
             onChanged: (_) => _toggleTaskCompletion(task),
