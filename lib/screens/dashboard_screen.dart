@@ -9,6 +9,7 @@ import 'settings_screen.dart';
 import 'notifications_screen.dart';
 import 'subjects_screen.dart';
 import 'deadlines_screen.dart';
+import 'tasks_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -25,8 +26,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _isLoadingWeather = true;
   String? _weatherError;
   
-  // Mock podatki za danes (lahko zamenjaš z DB)
-  List<Task> _todayTasks = [];
+  // Naloge za danes iz baze
+  List<Map<String, dynamic>> _todayTasks = [];
+  List<Map<String, dynamic>> _subjects = [];
   
   // Izpitni roki
   int? _daysToNextExam;
@@ -94,12 +96,55 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  void _loadTodayTasks() {
-    // Uporabi mock podatke - zamenjaj z DB ko bo implementirano
-    setState(() {
-      _todayTasks = Task.getMockTasks();
-      // Za prazno stanje uporabi: _todayTasks = Task.getEmptyTasks();
-    });
+  Future<void> _loadTodayTasks() async {
+    try {
+      final allTasks = await _dbService.getAllTasks();
+      final subjects = await _dbService.getAllSubjects();
+      
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final tomorrow = today.add(const Duration(days: 1));
+      
+      // Filtriraj naloge za danes (nedokončane in z rokom danes)
+      final todayTasks = allTasks.where((task) {
+        if ((task['is_completed'] ?? 0) == 1) return false;
+        final dueDate = DateTime.parse(task['due_date']);
+        final dueDateOnly = DateTime(dueDate.year, dueDate.month, dueDate.day);
+        return dueDateOnly.isAtSameMomentAs(today) || dueDateOnly.isBefore(today);
+      }).toList();
+      
+      if (!mounted) return;
+      setState(() {
+        _todayTasks = todayTasks;
+        _subjects = subjects;
+      });
+    } catch (e) {
+      // Ignoriramo napake
+    }
+  }
+  
+  String _getSubjectName(int? subjectId) {
+    if (subjectId == null) return '';
+    final subject = _subjects.firstWhere(
+      (s) => s['id'] == subjectId,
+      orElse: () => {},
+    );
+    return subject['name'] ?? '';
+  }
+  
+  Color _getSubjectColor(int? subjectId) {
+    if (subjectId == null) return Colors.deepPurple;
+    final subject = _subjects.firstWhere(
+      (s) => s['id'] == subjectId,
+      orElse: () => {},
+    );
+    final colorHex = subject['color'];
+    if (colorHex == null) return Colors.deepPurple;
+    try {
+      return Color(int.parse(colorHex.toString().replaceFirst('#', '0xFF')));
+    } catch (e) {
+      return Colors.deepPurple;
+    }
   }
 
   void _navigateToSection(String section) {
@@ -109,21 +154,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
         Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const SubjectsScreen()),
-        );
+        ).then((_) => _refreshData());
         break;
       case 'Roki':
         Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const DeadlinesScreen()),
-        );
+        ).then((_) => _refreshData());
         break;
       case 'Naloge':
-        // TODO: implementiraj TasksScreen
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Naloge - kmalu na voljo')),
-        );
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const TasksScreen()),
+        ).then((_) => _refreshData());
         break;
     }
+  }
+
+  void _refreshData() {
+    _loadTodayTasks();
+    _loadNextExam();
   }
 
   @override
@@ -411,7 +461,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             MaterialPageRoute(
                               builder: (_) => const FlashcardDecksScreen(),
                             ),
-                          );
+                          ).then((_) => _refreshData());
                         },
                       ),
                     ),
@@ -585,46 +635,78 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     return Column(
-      children: _todayTasks.map((task) => Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: Row(
-          children: [
-            Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(
-                color: task.isCompleted ? Colors.green : Colors.deepPurple,
-                shape: BoxShape.circle,
+      children: _todayTasks.take(5).map((task) {
+        final subjectName = _getSubjectName(task['subject_id']);
+        final subjectColor = _getSubjectColor(task['subject_id']);
+        final dueDate = DateTime.parse(task['due_date']);
+        final now = DateTime.now();
+        final today = DateTime(now.year, now.month, now.day);
+        final isOverdue = DateTime(dueDate.year, dueDate.month, dueDate.day).isBefore(today);
+        
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: isOverdue ? Colors.red : subjectColor,
+                  shape: BoxShape.circle,
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    task.title,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: isDark ? Colors.white : Colors.black,
-                      decoration: task.isCompleted ? TextDecoration.lineThrough : null,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            task['title'] ?? 'Brez naslova',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: isDark ? Colors.white : Colors.black,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (isOverdue)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              'Zamujeno',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.red,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
-                  ),
-                  if (task.subject != null)
-                    Text(
-                      task.subject!,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: isDark ? Colors.white54 : Colors.black45,
+                    if (subjectName.isNotEmpty)
+                      Text(
+                        subjectName,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDark ? Colors.white54 : Colors.black45,
+                        ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
-        ),
-      )).toList(),
+            ],
+          ),
+        );
+      }).toList(),
     );
   }
 }

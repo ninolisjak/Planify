@@ -150,6 +150,16 @@ class DBService {
     return await db.query('tasks', orderBy: 'due_date');
   }
 
+  Future<List<Map<String, dynamic>>> getTasksForSubject(int subjectId) async {
+    final db = await database;
+    return await db.query(
+      'tasks',
+      where: 'subject_id = ?',
+      whereArgs: [subjectId],
+      orderBy: 'due_date ASC',
+    );
+  }
+
   Future<int> updateTask(int id, Map<String, dynamic> row) async {
     final db = await database;
     return await db.update('tasks', row, where: 'id = ?', whereArgs: [id]);

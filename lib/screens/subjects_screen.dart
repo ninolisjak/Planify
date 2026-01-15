@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/db_service.dart';
 import 'flashcard_decks_screen.dart';
+import 'subject_detail_screen.dart';
 
 class SubjectsScreen extends StatefulWidget {
   const SubjectsScreen({super.key});
@@ -14,18 +15,18 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
   List<Map<String, dynamic>> _subjects = [];
   bool _isLoading = true;
 
-  // Preddefinirane barve za predmete
+  
   final List<Color> _availableColors = [
-    const Color(0xFF8E24AA), // Vijolična
-    const Color(0xFFEC407A), // Roza
-    const Color(0xFF42A5F5), // Modra
-    const Color(0xFF66BB6A), // Zelena
-    const Color(0xFFFFA726), // Oranžna
-    const Color(0xFFEF5350), // Rdeča
-    const Color(0xFF26C6DA), // Cyan
-    const Color(0xFF7E57C2), // Temno vijolična
-    const Color(0xFF5C6BC0), // Indigo
-    const Color(0xFFFFCA28), // Rumena
+    const Color(0xFF8E24AA), 
+    const Color(0xFFEC407A), 
+    const Color(0xFF42A5F5), 
+    const Color(0xFF66BB6A), 
+    const Color(0xFFFFA726), 
+    const Color(0xFFEF5350), 
+    const Color(0xFF26C6DA), 
+    const Color(0xFF7E57C2), 
+    const Color(0xFF5C6BC0), 
+    const Color(0xFFFFCA28), 
   ];
 
   @override
@@ -320,17 +321,18 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
           child: InkWell(
             borderRadius: BorderRadius.circular(16),
             onTap: () {
-              // Odpri flashcard sistem za ta predmet
+              // Odpri podrobnosti predmeta
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => FlashcardDecksScreen(
+                  builder: (context) => SubjectDetailScreen(
                     subjectId: subject['id'],
                     subjectName: subject['name'],
                     subjectColor: subject['color'],
+                    professorName: subject['professor'],
                   ),
                 ),
-              );
+              ).then((_) => _loadSubjects());
             },
             child: Container(
               decoration: BoxDecoration(
@@ -389,28 +391,29 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
                       case 'delete':
                         _deleteSubject(subject);
                         break;
-                      case 'flashcards':
+                      case 'open':
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => FlashcardDecksScreen(
+                            builder: (context) => SubjectDetailScreen(
                               subjectId: subject['id'],
                               subjectName: subject['name'],
                               subjectColor: subject['color'],
+                              professorName: subject['professor'],
                             ),
                           ),
-                        );
+                        ).then((_) => _loadSubjects());
                         break;
                     }
                   },
                   itemBuilder: (context) => [
                     const PopupMenuItem(
-                      value: 'flashcards',
+                      value: 'open',
                       child: Row(
                         children: [
-                          Icon(Icons.school, size: 20),
+                          Icon(Icons.open_in_new, size: 20),
                           SizedBox(width: 8),
-                          Text('Flashcards'),
+                          Text('Odpri'),
                         ],
                       ),
                     ),
