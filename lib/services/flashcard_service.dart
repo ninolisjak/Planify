@@ -19,10 +19,12 @@ class FlashcardService {
         CREATE TABLE flashcard_decks(
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           user_id TEXT,
+          subject_id INTEGER,
           name TEXT NOT NULL,
           description TEXT,
           color TEXT DEFAULT '#9C27B0',
-          created_at TEXT DEFAULT (datetime('now'))
+          created_at TEXT DEFAULT (datetime('now')),
+          FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE
         )
       ''');
 
@@ -40,6 +42,13 @@ class FlashcardService {
           FOREIGN KEY (deck_id) REFERENCES flashcard_decks(id) ON DELETE CASCADE
         )
       ''');
+    } else {
+      // Dodaj subject_id stolpec če še ne obstaja
+      try {
+        await db.execute('ALTER TABLE flashcard_decks ADD COLUMN subject_id INTEGER');
+      } catch (e) {
+        // Stolpec že obstaja
+      }
     }
   }
 
@@ -48,21 +57,28 @@ class FlashcardService {
   Future<int> insertDeck(FlashcardDeck deck) async {
     final db = await _dbService.database;
     return await db.insert('flashcard_decks', {
+      'subject_id': deck.subjectId,
       'name': deck.name,
       'description': deck.description,
       'color': deck.color,
     });
   }
 
-  Future<List<FlashcardDeck>> getAllDecks() async {
+  Future<List<FlashcardDeck>> getAllDecks({int? subjectId}) async {
     final db = await _dbService.database;
-    final decks = await db.rawQuery('''
+    String query = '''
       SELECT d.*, COUNT(f.id) as card_count 
       FROM flashcard_decks d 
       LEFT JOIN flashcards f ON d.id = f.deck_id 
-      GROUP BY d.id 
-      ORDER BY d.created_at DESC
-    ''');
+    ''';
+    
+    if (subjectId != null) {
+      query += 'WHERE d.subject_id = $subjectId ';
+    }
+    
+    query += 'GROUP BY d.id ORDER BY d.created_at DESC';
+    
+    final decks = await db.rawQuery(query);
     return decks.map((map) => FlashcardDeck.fromMap(map)).toList();
   }
 
@@ -85,6 +101,7 @@ class FlashcardService {
     return await db.update(
       'flashcard_decks',
       {
+        'subject_id': deck.subjectId,
         'name': deck.name,
         'description': deck.description,
         'color': deck.color,

@@ -5,7 +5,16 @@ import 'flashcard_study_screen.dart';
 import 'flashcard_edit_screen.dart';
 
 class FlashcardDecksScreen extends StatefulWidget {
-  const FlashcardDecksScreen({super.key});
+  final int? subjectId;
+  final String? subjectName;
+  final String? subjectColor;
+
+  const FlashcardDecksScreen({
+    super.key,
+    this.subjectId,
+    this.subjectName,
+    this.subjectColor,
+  });
 
   @override
   State<FlashcardDecksScreen> createState() => _FlashcardDecksScreenState();
@@ -29,7 +38,7 @@ class _FlashcardDecksScreenState extends State<FlashcardDecksScreen> {
 
   Future<void> _loadDecks() async {
     setState(() => _isLoading = true);
-    final decks = await _service.getAllDecks();
+    final decks = await _service.getAllDecks(subjectId: widget.subjectId);
     setState(() {
       _decks = decks;
       _isLoading = false;
@@ -39,7 +48,7 @@ class _FlashcardDecksScreenState extends State<FlashcardDecksScreen> {
   void _showCreateDeckDialog() {
     final nameController = TextEditingController();
     final descController = TextEditingController();
-    String selectedColor = '#9C27B0';
+    String selectedColor = widget.subjectColor ?? '#9C27B0';
 
     final colors = [
       '#9C27B0', '#E91E63', '#F44336', '#FF9800', 
@@ -108,6 +117,7 @@ class _FlashcardDecksScreenState extends State<FlashcardDecksScreen> {
                 if (nameController.text.trim().isEmpty) return;
                 
                 final deck = FlashcardDeck(
+                  subjectId: widget.subjectId,
                   name: nameController.text.trim(),
                   description: descController.text.trim().isEmpty 
                       ? null 
@@ -197,6 +207,7 @@ class _FlashcardDecksScreenState extends State<FlashcardDecksScreen> {
                 
                 final updatedDeck = FlashcardDeck(
                   id: deck.id,
+                  subjectId: deck.subjectId ?? widget.subjectId,
                   name: nameController.text.trim(),
                   description: descController.text.trim().isEmpty 
                       ? null 
@@ -254,10 +265,16 @@ class _FlashcardDecksScreenState extends State<FlashcardDecksScreen> {
     return Scaffold(
       backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF5F5F5),
       appBar: AppBar(
-        title: const Text('Flashcards'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        foregroundColor: isDark ? Colors.white : Colors.black,
+        title: Text(widget.subjectName != null 
+            ? 'Flashcards - ${widget.subjectName}' 
+            : 'Flashcards'),
+        backgroundColor: widget.subjectColor != null 
+            ? _hexToColor(widget.subjectColor!)
+            : Colors.transparent,
+        elevation: widget.subjectColor != null ? 2 : 0,
+        foregroundColor: widget.subjectColor != null 
+            ? Colors.white 
+            : (isDark ? Colors.white : Colors.black),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())

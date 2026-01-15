@@ -6,6 +6,7 @@ import '../services/weather_service.dart';
 import 'flashcard_decks_screen.dart';
 import 'settings_screen.dart';
 import 'notifications_screen.dart';
+import 'subjects_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -70,9 +71,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     // Navigacija glede na sekcijo
     switch (section) {
       case 'Predmeti':
-        // Scrollaj do predmetov ali odpri nov screen
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Predmeti - poglej spodaj')),
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const SubjectsScreen()),
         );
         break;
       case 'Roki':

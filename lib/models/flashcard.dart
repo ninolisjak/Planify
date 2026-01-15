@@ -79,6 +79,7 @@ class Flashcard {
 
 class FlashcardDeck {
   final int? id;
+  final int? subjectId;
   final String name;
   final String? description;
   final String color;
@@ -87,6 +88,7 @@ class FlashcardDeck {
 
   FlashcardDeck({
     this.id,
+    this.subjectId,
     required this.name,
     this.description,
     this.color = '#9C27B0',
@@ -97,6 +99,7 @@ class FlashcardDeck {
   Map<String, dynamic> toMap() {
     return {
       'id': id,
+      'subject_id': subjectId,
       'name': name,
       'description': description,
       'color': color,
@@ -107,6 +110,7 @@ class FlashcardDeck {
   factory FlashcardDeck.fromMap(Map<String, dynamic> map) {
     return FlashcardDeck(
       id: map['id'],
+      subjectId: map['subject_id'],
       name: map['name'],
       description: map['description'],
       color: map['color'] ?? '#9C27B0',
